@@ -1,5 +1,3 @@
-# main.py
-
 import subprocess
 import sys
 import os
@@ -49,17 +47,19 @@ with open('class_indices.json', 'r') as f:
 # Invert the class indices to get labels
 idx_to_class = {int(k): v for k, v in class_indices.items()}
 
-
 # Create FastAPI app
 app = FastAPI()
 
-# Preprocessing function (no ResNet)
+# Preprocessing function
 def preprocess_image(image_bytes):
     img = Image.open(io.BytesIO(image_bytes)).convert("RGB")
     img = img.resize((224, 224))
-    img_array = np.array(img) / 255.0  # Normalize
-    img_array = np.expand_dims(img_array, axis=0)  # Add batch dimension
-    return img_array  # <--- directly return this, no ResNet!
+    img_array = np.array(img)
+    if img_array.shape[-1] == 4:  # If image has an alpha channel (RGBA)
+        img_array = img_array[..., :3]
+    img_array = img_array / 255.0  # Normalize to [0,1]
+    img_array = img_array.reshape((1, 224, 224, 3))  # Correct shape for CNN
+    return img_array
 
 @app.get("/")
 def read_root():
