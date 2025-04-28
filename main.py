@@ -47,7 +47,8 @@ with open('class_indices.json', 'r') as f:
     class_indices = json.load(f)
 
 # Invert the class indices to get labels
-idx_to_class = {int(v): k for k, v in class_indices.items()}
+idx_to_class = {int(k): v for k, v in class_indices.items()}
+
 
 # Create FastAPI app
 app = FastAPI()
