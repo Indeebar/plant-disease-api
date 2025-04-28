@@ -49,22 +49,26 @@ with open('class_indices.json', 'r') as f:
 # Invert the class indices to get labels
 idx_to_class = {int(v): k for v, k in class_indices.items()}
 
+# Load feature extractor (IMPORTANT)
+feature_extractor = tf.keras.applications.ResNet50(
+    weights="imagenet",
+    include_top=False,
+    pooling="avg",
+    input_shape=(224, 224, 3)
+)
+
 # Create FastAPI app
 app = FastAPI()
 
 # Preprocessing function
 def preprocess_image(image_bytes):
     img = Image.open(io.BytesIO(image_bytes)).convert("RGB")
-    img = img.resize((224, 224))  # Resizing
-    img_array = np.array(img) / 255.0  # Normalizing
-    img_array = np.expand_dims(img_array, axis=0)  # Adding batch dimension
+    img = img.resize((224, 224))
+    img_array = np.array(img) / 255.0  # Normalize
+    img_array = np.expand_dims(img_array, axis=0)  # Add batch dimension
 
-    # Check if model expects flattened input
-    expected_input_shape = model.input_shape  # e.g., (None, 25088) or (None, 224, 224, 3)
-    if len(expected_input_shape) == 2:
-        # Expected a flat vector
-        img_array = img_array.reshape((img_array.shape[0], -1))  # Flatten
-    return img_array
+    features = feature_extractor(img_array, training=False)  # Extract features
+    return features
 
 @app.get("/")
 def read_root():
@@ -89,4 +93,3 @@ async def predict(file: UploadFile = File(...)):
             {"error": str(e)},
             status_code=500
         )
-
