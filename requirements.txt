@@ -3,3 +3,5 @@ uvicorn
 tensorflow
 gdown
 pillow
+python-multipart
+
