@@ -47,18 +47,18 @@ with open('class_indices.json', 'r') as f:
     class_indices = json.load(f)
 
 # Invert the class indices to get labels
-idx_to_class = {int(v): k for v, k in class_indices.items()}
+idx_to_class = {int(v): k for k, v in class_indices.items()}
 
 # Create FastAPI app
 app = FastAPI()
 
-# Preprocessing function
+# Preprocessing function (no ResNet)
 def preprocess_image(image_bytes):
     img = Image.open(io.BytesIO(image_bytes)).convert("RGB")
-    img = img.resize((224, 224))  # Resize to match training
-    img_array = np.array(img) / 255.0  # Normalize pixel values
+    img = img.resize((224, 224))
+    img_array = np.array(img) / 255.0  # Normalize
     img_array = np.expand_dims(img_array, axis=0)  # Add batch dimension
-    return img_array
+    return img_array  # <--- directly return this, no ResNet!
 
 @app.get("/")
 def read_root():
