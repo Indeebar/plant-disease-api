@@ -27,7 +27,7 @@ except ImportError:
     import tensorflow as tf
 
 # Download model if not exists
-file_id = '10oBFt7djLQUTlzYyRHOJ_uia3c1yBkGZ'  # <-- updated File ID here
+file_id = '10oBFt7djLQUTlzYyRHOJ_uia3c1yBkGZ'
 gdrive_url = f"https://drive.google.com/uc?id={file_id}"
 model_path = 'plant_disease_model.h5'
 
@@ -52,11 +52,18 @@ idx_to_class = {int(v): k for v, k in class_indices.items()}
 # Create FastAPI app
 app = FastAPI()
 
+# Preprocessing function
 def preprocess_image(image_bytes):
     img = Image.open(io.BytesIO(image_bytes)).convert("RGB")
-    img = img.resize((224, 224))  # Assuming model expects 224x224
-    img_array = np.array(img) / 255.0  # Normalize
-    img_array = np.expand_dims(img_array, axis=0)  # Add batch dimension
+    img = img.resize((224, 224))  # Resizing
+    img_array = np.array(img) / 255.0  # Normalizing
+    img_array = np.expand_dims(img_array, axis=0)  # Adding batch dimension
+
+    # Check if model expects flattened input
+    expected_input_shape = model.input_shape  # e.g., (None, 25088) or (None, 224, 224, 3)
+    if len(expected_input_shape) == 2:
+        # Expected a flat vector
+        img_array = img_array.reshape((img_array.shape[0], -1))  # Flatten
     return img_array
 
 @app.get("/")
@@ -65,14 +72,21 @@ def read_root():
 
 @app.post("/predict")
 async def predict(file: UploadFile = File(...)):
-    contents = await file.read()
-    input_tensor = preprocess_image(contents)
-    preds = model.predict(input_tensor)
-    pred_class = np.argmax(preds, axis=1)[0]
-    pred_label = idx_to_class.get(pred_class, "Unknown")
-    confidence = float(np.max(preds))
+    try:
+        contents = await file.read()
+        input_tensor = preprocess_image(contents)
+        preds = model.predict(input_tensor)
+        pred_class = np.argmax(preds, axis=1)[0]
+        pred_label = idx_to_class.get(pred_class, "Unknown")
+        confidence = float(np.max(preds))
 
-    return JSONResponse({
-        "predicted_class": pred_label,
-        "confidence": confidence
-    })
+        return JSONResponse({
+            "predicted_class": pred_label,
+            "confidence": confidence
+        })
+    except Exception as e:
+        return JSONResponse(
+            {"error": str(e)},
+            status_code=500
+        )
+
