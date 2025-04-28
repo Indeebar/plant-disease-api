@@ -49,26 +49,16 @@ with open('class_indices.json', 'r') as f:
 # Invert the class indices to get labels
 idx_to_class = {int(v): k for v, k in class_indices.items()}
 
-# Load feature extractor (IMPORTANT)
-feature_extractor = tf.keras.applications.ResNet50(
-    weights="imagenet",
-    include_top=False,
-    pooling="avg",
-    input_shape=(224, 224, 3)
-)
-
 # Create FastAPI app
 app = FastAPI()
 
 # Preprocessing function
 def preprocess_image(image_bytes):
     img = Image.open(io.BytesIO(image_bytes)).convert("RGB")
-    img = img.resize((224, 224))
-    img_array = np.array(img) / 255.0  # Normalize
+    img = img.resize((224, 224))  # Resize to match training
+    img_array = np.array(img) / 255.0  # Normalize pixel values
     img_array = np.expand_dims(img_array, axis=0)  # Add batch dimension
-
-    features = feature_extractor(img_array, training=False)  # Extract features
-    return features
+    return img_array
 
 @app.get("/")
 def read_root():
