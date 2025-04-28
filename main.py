@@ -27,7 +27,7 @@ except ImportError:
     import tensorflow as tf
 
 # Download model if not exists
-file_id = '1dThV5Jkfolk7-Dy5J3P2IEAf-iajJ9Zd'
+file_id = '10oBFt7djLQUTlzYyRHOJ_uia3c1yBkGZ'  # <-- updated File ID here
 gdrive_url = f"https://drive.google.com/uc?id={file_id}"
 model_path = 'plant_disease_model.h5'
 
