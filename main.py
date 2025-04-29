@@ -8,7 +8,7 @@ from fastapi.responses import JSONResponse
 from PIL import Image
 import io
 
-# Auto-install packages if needed
+# Auto-install packages if missing
 def install(package):
     subprocess.check_call([sys.executable, "-m", "pip", "install", package])
 
@@ -24,7 +24,7 @@ except ImportError:
     install('tensorflow')
     import tensorflow as tf
 
-# Download model if not exists
+# Download model from Google Drive if not already present
 file_id = '10oBFt7djLQUTlzYyRHOJ_uia3c1yBkGZ'
 gdrive_url = f"https://drive.google.com/uc?id={file_id}"
 model_path = 'plant_disease_model.h5'
@@ -35,33 +35,38 @@ if not os.path.exists(model_path):
 else:
     print("Model already exists. Skipping download.")
 
-# Load model
+# Load the model
 print("Loading model...")
 model = tf.keras.models.load_model(model_path)
 print("Model loaded successfully!")
 
-# Load class indices
+# Load class labels
 with open('class_indices.json', 'r') as f:
     class_indices = json.load(f)
-
-# Invert the class indices to get labels
 idx_to_class = {int(k): v for k, v in class_indices.items()}
 
 # Create FastAPI app
 app = FastAPI()
 
-# ✅ Preprocessing with 128x128 resize
+# ✅ Preprocessing to 128x128 (as per model training)
 def preprocess_image(image_bytes):
     img = Image.open(io.BytesIO(image_bytes)).convert("RGB")
-    img = img.resize((128, 128))  # ✅ MATCH model training size
-    img_array = np.array(img) / 255.0  # Normalize
-    img_array = np.expand_dims(img_array, axis=0)  # Add batch dimension
+    img = img.resize((128, 128))
+    img_array = np.array(img) / 255.0
+    img_array = np.expand_dims(img_array, axis=0)
     return img_array
 
+# ✅ Root route
 @app.get("/")
 def read_root():
-    return {"message": "Plant Disease Prediction API is running!"}
+    return {"message": "🌿 Plant Disease Prediction API is running!"}
 
+# ✅ Add HEAD route for Render health check
+@app.head("/")
+def head_root():
+    return JSONResponse(content={}, status_code=200)
+
+# ✅ Prediction route
 @app.post("/predict")
 async def predict(file: UploadFile = File(...)):
     try:
@@ -72,10 +77,11 @@ async def predict(file: UploadFile = File(...)):
         pred_label = idx_to_class.get(pred_class, "Unknown")
         confidence = float(np.max(preds))
 
-        return JSONResponse({
+        return {
             "predicted_class": pred_label,
-            "confidence": confidence
-        })
+            "confidence": round(confidence, 4)
+        }
+
     except Exception as e:
         return JSONResponse(
             {"error": str(e)},
